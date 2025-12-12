@@ -345,6 +345,37 @@ app.MapGet("/api/documents/all", async (ICouchbaseCollection collection) =>
     }
 });
 
+app.MapDelete("/api/documents/{id}", async (string id, ICouchbaseCollection collection) =>
+{
+    try
+    {
+        await collection.RemoveAsync(id).ConfigureAwait(false);
+        return Results.Ok(new
+        {
+            Success = true,
+            Id = id,
+            Message = "Document deleted successfully"
+        });
+    }
+    catch (DocumentNotFoundException)
+    {
+        return Results.NotFound(new
+        {
+            Success = false,
+            Error = $"Document with id '{id}' not found"
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new
+        {
+            Success = false,
+            Error = ex.Message,
+            ExceptionType = ex.GetType().Name
+        });
+    }
+});
+
 // Root endpoint
 app.MapGet("/", () => Results.Ok(new
 {
