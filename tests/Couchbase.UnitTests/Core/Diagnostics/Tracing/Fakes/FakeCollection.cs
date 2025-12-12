@@ -45,6 +45,11 @@ namespace Couchbase.UnitTests.Core.Diagnostics.Tracing.Fakes
            return Task.FromResult(new Mock<IGetResult>().Object);
         }
 
+        public Task<IGetResult> GetBeforeAsync(string id, ulong cas, GetOptions? options = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<IExistsResult> ExistsAsync(string id, ExistsOptions? options = null)
         {
             throw new NotImplementedException();

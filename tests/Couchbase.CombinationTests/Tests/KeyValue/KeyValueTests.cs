@@ -9,6 +9,7 @@ using Couchbase.Core.Exceptions.KeyValue;
 using Couchbase.IntegrationTests.Utils;
 using Couchbase.KeyValue;
 using Couchbase.Management.Collections;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
@@ -30,6 +31,28 @@ namespace Couchbase.CombinationTests.Tests.KeyValue
             _testHelper = new TestHelper(fixture);
         }
 
+        [Fact]
+        public async Task Test_GetAsync_HACKATHON()
+        {
+            var bucket = await _fixture.Cluster.BucketAsync("default").ConfigureAwait(false);
+            var scope = await bucket.ScopeAsync("_default").ConfigureAwait(false);
+            var collection = await scope.CollectionAsync("_default").ConfigureAwait(false);
+
+            // var scroll = await collection.GetAsync("scroll-001").ConfigureAwait(false);
+            // _outputHelper.WriteLine("Current: " + scroll.ContentAs<JObject>().ToString());
+
+            var olderScroll = await collection.GetBeforeAsync("scroll-001", ulong.MaxValue).ConfigureAwait(false);
+            // _outputHelper.WriteLine("1 older: " + olderScroll.ContentAs<JObject>().ToString());
+
+            var evenOlderScroll = await collection.GetBeforeAsync("scroll-001", olderScroll.Cas).ConfigureAwait(false);
+            _outputHelper.WriteLine("2 older: " + evenOlderScroll.ContentAs<JObject>().ToString());
+
+            var evenOlderScroll2 = await collection.GetBeforeAsync("scroll-001", evenOlderScroll.Cas).ConfigureAwait(false);
+            _outputHelper.WriteLine("2 older: " + evenOlderScroll2.ContentAs<JObject>().ToString());
+
+            var evenOlderScroll3 = await collection.GetBeforeAsync("scroll-001", evenOlderScroll2.Cas).ConfigureAwait(false);
+            _outputHelper.WriteLine("2 older: " + evenOlderScroll3.ContentAs<JObject>().ToString());
+        }
         [Fact]
         public async Task Test_TryGetAsync_KeyNotFound()
         {

@@ -80,6 +80,11 @@ internal class StellarCollection : ICouchbaseCollection, IBinaryCollection
 
     public ICollectionQueryIndexManager QueryIndexes => _stellarCollectionQueryIndexes;
 
+    public Task<IGetResult> GetBeforeAsync(string id, ulong cas, GetOptions? options = null)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<IExistsResult> ExistsAsync(string id, ExistsOptions? options = null)
     {
         _stellarCluster.ThrowIfBootStrapFailed();

@@ -3,6 +3,7 @@ namespace Couchbase.Core.IO.Operations
     public enum OpCode : byte
     {
         Get = 0x00,
+        GetBefore = 0x4b,
         Set = 0x01,
         Add = 0x02,
         Replace = 0x03,

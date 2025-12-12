@@ -297,6 +297,108 @@ namespace Couchbase.KeyValue
             };
         }
 
+        public async Task<IGetResult> GetBeforeAsync(string id, ulong cas, GetOptions? options = null)
+        {
+            _bucket.ThrowIfBootStrapFailed();
+
+            if (RequiresCid())
+            {
+                await PopulateCidAsync().ConfigureAwait(false);
+            }
+
+            options ??= GetOptions.Default;
+
+            using var rootSpan = RootSpan(OuterRequestSpans.ServiceSpan.Kv.Get, options.RequestSpanValue);
+
+            var projectList = options.ProjectListValue;
+
+            var specCount = projectList.Count;
+            if (options.IncludeExpiryValue) specCount++;
+
+            if (specCount == 0)
+            {
+                // We aren't including the expiry value and we have no projections so fetch the whole doc using a Get operation
+                using var getOp = new GetBefore<byte[]>
+                {
+                    Key = id,
+                    Cas = cas,
+                    Cid = Cid,
+                    BucketName = _bucket.Name,
+                    CName = Name,
+                    SName = ScopeName,
+                    Span = rootSpan,
+                    PreferReturns = options.PreferReturn
+                };
+                _operationConfigurator.Configure(getOp, options);
+
+                using var ctp = CreateRetryTimeoutCancellationTokenSource(options, getOp);
+                var status = await _bucket.RetryAsync(getOp, ctp.TokenPair).ConfigureAwait(false);
+
+                if (status == ResponseStatus.KeyNotFound)
+                {
+                    var test = getOp.Cas;
+                }
+
+                var result = new GetResult(getOp.ExtractBody(), getOp.Transcoder, _getLogger, _fallbackTypeSerializerProvider, status)
+                {
+                    Id = getOp.Key,
+                    Cas = getOp.Cas,
+                    OpCode = getOp.OpCode,
+                    Flags = getOp.Flags,
+                    Header = getOp.Header,
+                    Opaque = getOp.Opaque
+                };
+                return result;
+            }
+
+            var specs = new List<LookupInSpec>();
+
+            if (options.IncludeExpiryValue)
+                specs.Add(new LookupInSpec
+                {
+                    OpCode = OpCode.SubGet,
+                    Path = VirtualXttrs.DocExpiryTime,
+                    PathFlags = SubdocPathFlags.Xattr
+                });
+
+            if (projectList.Count == 0 || specCount > 16)
+                // No projections or we have exceeded the max #fields returnable by sub-doc so fetch the whole doc
+                specs.Add(new LookupInSpec
+                {
+                    Path = "",
+                    OpCode = OpCode.Get,
+                    DocFlags = SubdocDocFlags.None
+                });
+            else
+                //Add the projections for fetching
+                foreach (var path in projectList)
+                    specs.Add(new LookupInSpec
+                    {
+                        OpCode = OpCode.SubGet,
+                        Path = path
+                    });
+
+            var lookupInOptions = !ReferenceEquals(options, GetOptions.Default)
+                ? new LookupInOptions()
+                    .Timeout(options.TimeoutValue)
+                    .Transcoder(options.TranscoderValue).AsReadOnly()
+                : LookupInOptions.Default.AsReadOnly();
+
+            using var lookupOp = await ExecuteLookupIn(id,
+                    specs, lookupInOptions, rootSpan)
+                .ConfigureAwait(false);
+            rootSpan.WithOperationId(lookupOp);
+            return new GetResult(lookupOp.ExtractBody(), lookupOp.Transcoder, _getLogger, _fallbackTypeSerializerProvider, specs, projectList)
+            {
+                Id = lookupOp.Key,
+                Cas = lookupOp.Cas,
+                OpCode = lookupOp.OpCode,
+                Flags = lookupOp.Flags,
+                Header = lookupOp.Header,
+                Opaque = lookupOp.Opaque
+            };
+        }
+
         #endregion
 
         #region Exists

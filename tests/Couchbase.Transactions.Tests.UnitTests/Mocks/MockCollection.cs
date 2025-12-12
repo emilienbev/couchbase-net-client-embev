@@ -30,6 +30,11 @@ namespace Couchbase.Transactions.Tests.UnitTests.Mocks
             throw new DocumentNotFoundException();
         }
 
+        public Task<IGetResult> GetBeforeAsync(string id, ulong cas, GetOptions? options = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<IExistsResult> ExistsAsync(string id, ExistsOptions? options = null)
         {
             throw new NotImplementedException();
@@ -179,6 +184,11 @@ namespace Couchbase.Transactions.Tests.UnitTests.Mocks
         public IBinaryCollection Binary => throw new NotImplementedException();
 
         public bool IsDefaultCollection => Name == "_default";
+
+        public Task<IGetResult> GetBeforeAsync(string id, ulong cas, GetOptions? options = null)
+        {
+            throw new NotImplementedException();
+        }
 
         public Task<IExistsResult> ExistsAsync(string id, ExistsOptions? options = null)
         {
